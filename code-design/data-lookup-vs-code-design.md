@@ -2,8 +2,6 @@
 
 | 항목 | 내용 |
 |------|------|
-| Date | 2026-04-10 |
-| Context | GameEvent 팩토리 함수 설계 시 data/ 패턴을 적용할지 판단하면서 정리 |
 | 핵심 질문 | 런타임 lookup용 data dict vs 코드 레벨 정의, 각각 언제 쓰는가? |
 
 ---
@@ -19,20 +17,20 @@
 - **YES** → data dict 패턴. 키-값 매핑이 필요하다.
 - **NO** → 코드(함수, 클래스)로 직접 표현. dict에 넣을 이유가 없다.
 
-### AgentPit 사례
+### 예시
 
 ```python
 # ✅ data dict가 맞는 경우 — 런타임 lookup
-# production.py에서 recipe_id(외부 입력)로 레시피를 조회
-recipe = ALL_RECIPES[recipe_id]  # recipe_id는 에이전트가 선택한 값
+# 외부 입력(사용자가 선택한 product_id)으로 상품 정보 조회
+product = ALL_PRODUCTS[product_id]
 
 # ✅ data dict가 맞는 경우 — 런타임 lookup
-# expiry 값을 resource_id로 조회
-expiry = ALL_RESOURCES[resource_id].expiry
+# 외부 입력(country code)으로 통화 단위 조회
+currency = COUNTRY_CURRENCY[country_code]
 
 # ❌ data dict가 불필요한 경우 — 코드가 직접 호출
-# 엔진이 거래 실행할 때 팩토리를 직접 호출. lookup 없음.
-event = trade_executed(session_id, round_number, ...)
+# 코드 안에서 정해진 함수를 직접 호출. lookup 없음.
+event = order_placed(user_id, product_id, quantity)
 ```
 
 ---
@@ -47,9 +45,9 @@ data dict는 **Indirection(간접 참조) 레이어**다.
 
 이 간접 참조가 가치를 갖는 조건:
 
-1. **호출자가 구체적인 값을 모른다** — recipe_id만 알고, inputs/outputs/duration은 dict에서 가져와야 한다.
-2. **값이 여러 곳에서 공유된다** — ALL_RESOURCES의 expiry가 production, auto_prod, trade 등 여러 엔진에서 참조된다.
-3. **값이 코드 변경 없이 바뀔 수 있다** — 새 자원 추가 시 data 파일만 수정하면 엔진 코드는 그대로.
+1. **호출자가 구체적인 값을 모른다** — `product_id`만 알고, 가격/이름/카테고리는 dict에서 가져와야 한다.
+2. **값이 여러 곳에서 공유된다** — 같은 상품 정보를 주문/결제/배송/리포트가 모두 참조한다.
+3. **값이 코드 변경 없이 바뀔 수 있다** — 새 상품 추가 시 데이터 파일만 수정하면 코드는 그대로.
 
 하나도 해당 안 되면 dict에 넣는 건 불필요한 간접 참조 — 복잡성만 추가된다.
 
@@ -60,24 +58,21 @@ data dict는 **Indirection(간접 참조) 레이어**다.
 팩토리 함수의 시그니처는 그 자체로 스키마다:
 
 ```python
-def trade_executed(
-    session_id: str,
-    round_number: int,
-    agent_id: str,
-    offer_id: str,      # ← 이게 properties 스키마
-    seller_id: str,
-    buyer_id: str,
-    resource: str,
+def order_placed(
+    user_id: str,
+    product_id: str,
     quantity: int,
-    price: int,
-) -> GameEvent:
+    unit_price: int,
+    currency: str,
+) -> Event:
+    ...
 ```
 
 이걸 data dict로 옮기면:
 
 ```python
 # 문자열 튜플 — 타입 정보 없음, IDE 지원 없음, 실수해도 런타임까지 모름
-EventType(name="trade.executed", properties=("offer_id", "seller_id", ...))
+EventType(name="order.placed", properties=("user_id", "product_id", "quantity", ...))
 ```
 
 **함수 시그니처가 더 강한 스키마인 이유:**
@@ -93,7 +88,7 @@ EventType(name="trade.executed", properties=("offer_id", "seller_id", ...))
 데이터를 사용하는 시점에서...
 
   외부 입력(키)으로 조회하는가?
-    ├─ YES → data dict (ALL_RESOURCES, ALL_RECIPES 등)
+    ├─ YES → data dict (ALL_PRODUCTS, COUNTRY_CURRENCY 등)
     └─ NO
          │
          코드가 직접 생성/호출하는가?
@@ -112,20 +107,20 @@ McConnell이 "Table-Driven Methods" 챕터(Ch.18)에서 다루는 핵심:
 > "테이블 기반 방법은 논리 구문(if/else)을 테이블 조회로 대체한다.
 > 복잡한 논리를 단순한 조회로 바꿀 수 있을 때 사용하라."
 
-적용: `ALL_RECIPES[recipe_id]`는 recipe_id별 if/else 분기를 dict lookup으로 대체한 것.
+적용: `ALL_PRODUCTS[product_id]`는 product_id별 if/else 분기를 dict lookup으로 대체한 것.
 반례: 이벤트 팩토리는 분기가 아니라 생성이므로 테이블화 불필요.
 
 ### Data-Driven Design — Game Programming Patterns (Robert Nystrom)
 
 게임 개발에서 데이터 주도 설계의 기준:
 
-> "게임 디자이너가 코드 변경 없이 수정할 수 있어야 하는 것 → 데이터로 분리.
+> "디자이너가 코드 변경 없이 수정할 수 있어야 하는 것 → 데이터로 분리.
 > 프로그래머만 건드리는 구조적 정의 → 코드로 유지."
 
 - https://gameprogrammingpatterns.com/data-locality.html
 - 관련 챕터: "Type Object" 패턴 — 런타임에 타입을 데이터로 정의
 
-AgentPit 적용: 자원/레시피는 게임 밸런싱 시 자주 변경 → data. 이벤트 스키마는 코드 구조 변경 시에만 변경 → code.
+기준: 자주 튜닝되는 값(밸런싱, 가격, 카탈로그)은 data. 코드 구조 변경 시에만 변경되는 정의는 code.
 
 ### Registry Pattern — Martin Fowler
 
@@ -136,8 +131,7 @@ Fowler의 Registry 패턴 (Patterns of Enterprise Application Architecture):
 
 - https://martinfowler.com/eaaCatalog/registry.html
 
-`ALL_RESOURCES`, `ALL_RECIPES`는 사실상 in-memory registry다.
-이벤트 팩토리는 호출자가 구체적 함수를 직접 호출하므로 registry 불필요.
+대부분의 in-memory `ALL_*` 상수가 사실상 registry다.
 
 ### Python 표준 라이브러리 사례
 
@@ -158,8 +152,8 @@ MyClass = make_dataclass('MyClass', [('x', int), ('y', float)])
 ```python
 # ❌ 모든 걸 data dict에 넣는 실수
 EVENT_HANDLERS = {
-    "trade.executed": handle_trade_executed,
-    "trade.failed": handle_trade_failed,
+    "order.placed": handle_order_placed,
+    "order.cancelled": handle_order_cancelled,
 }
 # → 핸들러를 직접 호출할 수 있는데 굳이 문자열 키로 간접 참조
 
@@ -170,3 +164,26 @@ handler = EVENT_HANDLERS[incoming_event["event_type"]]  # 런타임 dispatch 필
 핵심: **같은 패턴이라도 사용 맥락에 따라 적합/부적합이 갈린다.**
 dict dispatch가 필요한 순간은 외부에서 문자열이 들어올 때(역직렬화, 메시지 라우팅)다.
 내부 코드끼리는 함수를 직접 호출하는 게 항상 낫다.
+
+---
+
+## 7. 핵심 정리
+
+| 상황 | 선택 |
+|------|------|
+| 외부 입력 키로 조회 | data dict |
+| 코드가 직접 호출 | 함수/클래스 |
+| 자주 튜닝되는 값 | data (외부 파일/DB) |
+| 코드 구조의 일부 | code |
+| 메시지 큐에서 string으로 dispatch | data dict (registry) |
+| 내부 모듈끼리 호출 | 직접 import |
+
+---
+
+## 8. References
+
+- Steve McConnell — *Code Complete*, Chapter 18 (Table-Driven Methods)
+- Robert Nystrom — [*Game Programming Patterns*](https://gameprogrammingpatterns.com/) — "Type Object", "Data Locality"
+- Martin Fowler — [Registry Pattern](https://martinfowler.com/eaaCatalog/registry.html)
+- Martin Fowler — [Patterns of Enterprise Application Architecture](https://martinfowler.com/books/eaa.html)
+- Python `http.HTTPStatus` — stdlib registry 사례
