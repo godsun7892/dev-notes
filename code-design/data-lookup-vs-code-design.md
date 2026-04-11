@@ -180,7 +180,66 @@ dict dispatch가 필요한 순간은 외부에서 문자열이 들어올 때(역
 
 ---
 
-## 8. References
+## 8. 데이터를 어디에 둘 것인가 — py dict vs YAML vs DB
+
+"data로 두기로 결정했다" 다음에 오는 2차 질문: **어느 저장소에 둘 것인가?**
+
+흔한 오해는 "런타임에 바뀌는 것은 코드, 안 바뀌는 것은 파일" 같은 1차원 기준이다.
+이건 부정확하다. 실제 기준은 두 축이다.
+
+| | 런타임에 변함 | 런타임에 불변 |
+|---|---|---|
+| **값만 변함** | DB / Redis | YAML |
+| **구조/로직 변함** | (거의 없음) | Python |
+
+### 축 1 — 런타임 가변성
+- **런타임에 변함** → 플레이어 상태, 주문, 거래 로그 → **DB/Redis**
+- **런타임에 불변** → 시나리오 카탈로그, 레시피 정의 → **파일**
+
+### 축 2 — 바뀔 때 "무엇이" 바뀌는가
+런타임 불변 영역 안에서 다시 갈린다:
+- **값만 바뀜** (빵 가격 100→120, 수율 0.8→0.85) → **YAML**
+- **구조/로직 바뀜** (demand curve 공식, dataclass 필드, enum 케이스) → **Python**
+
+### 판단 질문
+> "이 값을 바꿀 때 테스트를 다시 짜야 하는가?"
+
+- 아니오 → YAML (기획자/밸런싱 작업자가 PR 없이 건드려도 안전)
+- 예 → Python (타입 체크, 리팩터링 도구, 테스트 커버리지 필요)
+
+### 안티패턴: "Python 파일에 하드코딩된 data dict"
+```python
+# ❌ data/recipes.py
+ALL_RECIPES = {
+    "bread": Recipe(inputs={"wheat": 2}, output="bread", yield_=10),
+    "coffee": Recipe(inputs={"bean": 1, "water": 1}, output="coffee", yield_=5),
+    ...
+}
+```
+
+이 형태는 **데이터도 아니고 코드도 아니라서 둘 다의 장점을 잃는다:**
+- 데이터의 장점(핫리로드, 비개발자 수정, 환경별 override)도 없고
+- 코드의 장점(타입 체크, IDE 지원, 리팩터링)도 약하다 — dict literal은 dataclass 정의보다 타입 추론이 약함
+- diff가 지저분해지고 밸런싱 변경이 git history에 코드 변경과 섞인다
+
+**리팩터링 방향:**
+```
+data/recipes.py (dict 하드코딩)
+  ↓
+scenarios/bread.yaml  (값만)
+scenarios/loader.py   (검증 + dataclass 변환)
+models/recipe.py      (dataclass 정의 — 그대로)
+```
+
+### 경계 케이스
+- **enum** (`ErrorCode`, `EventType`): 코드 분기에 쓰임 → Python
+- **i18n 번역 문자열**: 값만 + 런타임 불변 → YAML/JSON (locale 파일)
+- **feature flag**: 런타임 가변 + 값만 → DB/Redis (또는 LaunchDarkly 같은 원격 config)
+- **테스트 픽스처**: 코드에서 직접 참조 + 구조 변경 잦음 → Python (pytest fixture)
+
+---
+
+## 9. References
 
 - Steve McConnell — *Code Complete*, Chapter 18 (Table-Driven Methods)
 - Robert Nystrom — [*Game Programming Patterns*](https://gameprogrammingpatterns.com/) — "Type Object", "Data Locality"
