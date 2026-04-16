@@ -1,11 +1,13 @@
 # 12 Factor App 요약
 
+> 클라우드 네이티브 앱 설계의 12가지 원칙 ([12factor.net](https://12factor.net/))
+
 ## I. 코드베이스
 - 1개 코드베이스 → 여러 배포(서버 100대든 1000대든 같은 코드)
 - 서로 다른 앱이 코드를 공유하면 라이브러리로 빼서 관리
 
 ## II. 종속성
-- 모든 종속성을 명시적으로 선언 (requirements.txt, Dockerfile)
+- 모든 종속성을 명시적으로 선언 (`requirements.txt`, `pyproject.toml`, `Dockerfile`)
 - 시스템 도구(curl, ffmpeg 등)도 암묵적으로 의존하지 말고 Docker로 환경 자체를 패키징
 - 서버 100대 띄워도 동일한 환경 보장이 핵심
 
@@ -20,7 +22,7 @@
 
 ## V. 빌드, 릴리즈, 실행
 - 빌드(종속성 설치, 컴파일) → 릴리즈(빌드 + 설정) → 실행(그냥 띄우기)
-- 빌드는 복잡해도 OK, 실행은 단순해야 함 — 실행 중 pip install 같은 거 하면 서버마다 버전 달라짐
+- 빌드는 복잡해도 OK, 실행은 단순해야 함 — 실행 중 `pip install` 같은 거 하면 서버마다 버전 달라짐
 - 각 릴리즈는 유니크한 ID로 관리
 
 ## VI. 프로세스
@@ -29,7 +31,7 @@
 
 ## VII. 포트 바인딩
 - 앱 자체가 포트를 열고 HTTP 요청을 받음 (외부 웹서버에 의존 X)
-- uvicorn, Tornado, Jetty 같은 웹서버 라이브러리를 앱에 내장
+- uvicorn, Gunicorn, Tornado 같은 웹서버 라이브러리를 앱에 내장
 - 실전에서는 앞단에 Nginx(리버스 프록시)를 두기도 함
 
 ## VIII. 동시성 (프로세스 타입으로 스케일링)
@@ -68,3 +70,10 @@
 - DB 마이그레이션, 데이터 수정 스크립트 등 일회성 관리 작업
 - 앱과 같은 환경, 같은 코드베이스, 같은 종속성에서 실행
 - admin 스크립트도 앱 저장소에 커밋하여 관리 — 별도 분리 X
+
+---
+
+## References
+
+- [The Twelve-Factor App (공식 사이트)](https://12factor.net/) — Adam Wiggins, Heroku 출신
+- [Beyond the Twelve-Factor App](https://www.oreilly.com/library/view/beyond-the-twelve-factor/9781492042631/) — Kevin Hoffman, Pivotal (확장판)
