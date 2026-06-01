@@ -74,15 +74,7 @@
 
 ---
 
-## 6. "covering index 로 heap 안 가면?" — 부분 탈출, 한계 명확
-
-- 컬럼 포함 인덱스(`(session_id, amount)`) → **index-only scan** 으로 heap 생략 가능.
-- 한계: ① 인덱스도 **100만 엔트리 스캔** ② index-only 는 **visibility map = "전부 visible"** 필요한데 **fresh 데이터는 아님** → heap fetch fallback ③ 쿼리 모양마다 covering index → **인덱스 bloat.**
-- → 좁은 케이스만 구제, 일반 해법 아님.
-
----
-
-## 7. 컬럼 지향(ClickHouse)이 왜 이기나
+## 6. 컬럼 지향(ClickHouse)이 왜 이기나
 
 ```
 ClickHouse — 컬럼별로 따로 저장:
