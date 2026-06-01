@@ -50,7 +50,7 @@ sub-100ms p95 / 높은 동시성 / SLA 등급 freshness / 엄격한 테넌트 �
 |------|------|------|
 | **버퍼 캐시 churn** | 분석이 hot OLTP 페이지 축출 → 트랜잭션 오염 | [churn 노트](postgresql-clock-sweep-and-cache-churn.md) |
 | **요청당 백만 row 스캔** | row-store 라 100만 row 읽어 100ms 불가 | [row-store 노트](row-store-vs-columnar-storage.md) |
-| **고-cardinality 인덱스 bloat** | distinct 많은 컬럼 B-tree 비대 → 유지비·메모리·성능 저하 | — |
+| **고-cardinality 인덱스 bloat** | distinct 많은 컬럼 B-tree 비대 → 유지비·메모리·성능 저하 | [high-cardinality 노트](postgresql-high-cardinality-and-index-bloat.md) |
 | **빡빡한 freshness SLA** | 초 단위 최신 요구인데 MV 갱신은 분 단위 | — |
 | **ad-hoc 필터링** | 임의 차원 슬라이스 → 미리 집계가 못 덮음 → raw 스캔 | — |
 
