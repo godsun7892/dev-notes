@@ -1,7 +1,7 @@
 # Row-store vs Columnar 저장 + 백만 row 스캔
 
 > "왜 인덱스를 걸어도 분석 쿼리가 본질적으로 느린가" = row-store 의 근본 페널티.
-> breaking point ②(요청당 백만 row 스캔)의 원리. 관련: [OLTP vs OLAP](oltp-vs-olap-and-customer-facing-analytics.md).
+> breaking point ②(요청당 백만 row 스캔) + ⑤(ad-hoc 필터링)의 원리. 관련: [OLTP vs OLAP](oltp-vs-olap-and-customer-facing-analytics.md).
 
 ---
 
@@ -90,6 +90,17 @@ amount 블록:  [★][★][★][★][★]...  ← amount 만 빽빽이 연속 (+
 | 압축 | 낮음 | 높음(동종 컬럼) |
 
 → 분석 집계 **10~100x.** 그래서 OLAP 를 **PG 옆에** 둠 = 역할 분리(§ [OLTP vs OLAP](oltp-vs-olap-and-customer-facing-analytics.md)).
+
+---
+
+## 7. ⑤ ad-hoc 필터링 — 미리 집계가 못 덮어 ②를 강제 (졸업 신호 ⑤)
+
+- **ad-hoc = 유저가 임의 차원 조합으로 슬라이스** (예: `resource=bread AND price>50 AND tier=2 AND round 10~20`). 어떤 조합이 올지 **미리 모름.**
+- **미리 집계(rollup/MV)는 *정해진* 조합만 선계산** → ad-hoc 은 조합이 **폭발**(`resource10 × tier3 × round100 × price10 × agent1만 ≈ 3억`) → 다 미리 못 만듦 → 안 덮는 조합 = **raw 스캔 강제 = ②백만 row.**
+- **인덱스도 불가**: 조합마다 인덱스 = 지수 폭발(③ bloat). 복합 인덱스는 좌측 접두만. (PG `BitmapAnd` 로 일부 완화하나 거르는 컬럼마다 인덱스 필요 + 저선택도 조합은 여전히 느림)
+- **컬럼형 OLAP = slice & dice 본진**: 아무 컬럼이나 필터해도 그 컬럼 블록만 빠르게 → **미리 집계 없이 임의 조합 sub-100ms.**
+
+> 즉 ⑤는 **"②(raw 스캔이 느림)를 *피할 수 없게* 만드는 시나리오".** ②가 *왜 느린가*, ⑤가 *언제 강제되는가* — 한 몸. PG: ad-hoc → 미리 집계 불가 → raw 느림 / CH: 미리 집계 *필요 없음* → raw 가 이미 빠름.
 
 ---
 

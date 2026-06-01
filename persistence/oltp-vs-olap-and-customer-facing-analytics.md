@@ -52,7 +52,7 @@ sub-100ms p95 / 높은 동시성 / SLA 등급 freshness / 엄격한 테넌트 �
 | **요청당 백만 row 스캔** | row-store 라 100만 row 읽어 100ms 불가 | [row-store 노트](row-store-vs-columnar-storage.md) |
 | **고-cardinality 인덱스 bloat** | distinct 많은 컬럼 B-tree 비대 → 유지비·메모리·성능 저하 | [high-cardinality 노트](postgresql-high-cardinality-and-index-bloat.md) |
 | **빡빡한 freshness SLA** | 초 단위 최신 요구인데 MV 갱신은 분 단위 | [freshness 노트](freshness-tradeoff-and-streaming-olap.md) |
-| **ad-hoc 필터링** | 임의 차원 슬라이스 → 미리 집계가 못 덮음 → raw 스캔 | — |
+| **ad-hoc 필터링** | 임의 차원 슬라이스 → 미리 집계가 못 덮음 → raw 스캔 | [row-store §7](row-store-vs-columnar-storage.md) |
 
 → **현재 AgentPit = 0개** (유저 0, evaluator 미구현). PG 로 충분.
 
